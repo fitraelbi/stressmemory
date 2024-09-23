@@ -4,8 +4,9 @@ FROM golang:1.20-alpine AS builder
 # Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Copy go.mod and go.sum to download dependencies
 COPY . .
+
+# Unduh dependency dan build aplikasi
 RUN go mod download
 
 # Copy the source code into the container
