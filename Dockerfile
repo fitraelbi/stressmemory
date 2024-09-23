@@ -1,30 +1,28 @@
 # Stage 1: Build the Go binary
-FROM golang:alpine AS builder
+FROM golang:alpine as builder
 
-# Set the Current Working Directory inside the container
 WORKDIR /app
 
-COPY . .
-
-# Unduh dependency dan build aplikasi
+# Copy go.mod and go.sum, then download dependencies
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the source code into the container
+# Copy the source code
+COPY . .
 
-# Build the Go application
-RUN go build -o /memory-consumer
+# Build the Go binary
+RUN GOOS=linux GOARCH=amd64 go build -o /go-mem-app main.go
 
-# Stage 2: Run the Go binary
+# Stage 2: Create the final image
 FROM alpine:latest
 
-# Set timezone (optional)
-RUN apk add --no-cache tzdata
+WORKDIR /app
 
-# Copy the built binary from the builder
-COPY --from=builder /memory-consumer /memory-consumer
+# Copy the Go binary from the builder stage
+COPY --from=builder /go-mem-app .
 
-# Expose port 8080 for the web server
+# Expose port (optional, if your service exposes a port)
 EXPOSE 8080
 
-# Command to run the binary
-CMD ["/memory-consumer"]
+# Run the Go binary
+CMD ["./go-mem-app"]
