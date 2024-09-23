@@ -7,51 +7,60 @@ import (
 	"sync"
 )
 
-// Global variable untuk menyimpan data di memori
-var memoryHog [][]byte
-var mu sync.Mutex // Mutex untuk mencegah kondisi balapan
+var (
+	memoryHog [][]byte
+	mutex     sync.Mutex
+)
 
-// Handler untuk mengisi memori
-func stressMemoryHandler(w http.ResponseWriter, r *http.Request) {
-	querySize := r.URL.Query().Get("size")
-	if querySize == "" {
-		querySize = "100" // Default alokasi 100MB
+// Fungsi untuk mengkonsumsi memory sebesar sizeInMB
+func consumeMemory(sizeInMB int) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	for i := 0; i < sizeInMB/10; i++ {
+		// Menambahkan 10MB data ke slice
+		tenMB := make([]byte, 10*1024*1024)
+		memoryHog = append(memoryHog, tenMB)
 	}
+	fmt.Printf("Memory consumed: %d MB\n", len(memoryHog)*10)
+}
 
-	// Konversi ukuran (size) dari string ke integer
-	size, err := strconv.Atoi(querySize)
-	if err != nil {
-		http.Error(w, "Invalid size parameter", http.StatusBadRequest)
+// Endpoint untuk mulai mengkonsumsi memory
+func memoryHandler(w http.ResponseWriter, r *http.Request) {
+	// Ambil parameter "size" dari URL (dalam MB)
+	sizeParam := r.URL.Query().Get("size")
+	if sizeParam == "" {
+		http.Error(w, "Please provide size in MB, e.g., /start?size=1024", http.StatusBadRequest)
 		return
 	}
 
-	mu.Lock() // Mengunci saat penulisan
-	defer mu.Unlock()
-
-	// Alokasi memory berdasarkan ukuran yang diberikan
-	for i := 0; i < size; i++ {
-		// Alokasikan 1MB (1024 * 1024 byte) di setiap iterasi
-		memoryHog = append(memoryHog, make([]byte, 1024*1024))
+	// Konversi dari string ke integer
+	sizeInMB, err := strconv.Atoi(sizeParam)
+	if err != nil || sizeInMB <= 0 {
+		http.Error(w, "Invalid size parameter, must be a positive integer", http.StatusBadRequest)
+		return
 	}
 
-	fmt.Fprintf(w, "Memory usage increased by %dMB\n", size)
+	// Mulai konsumsi memory sebesar sizeInMB
+	go consumeMemory(sizeInMB)
+
+	// Berikan respon kepada pengguna
+	fmt.Fprintf(w, "Started consuming %d MB of memory\n", sizeInMB)
 }
 
-// Handler untuk membersihkan memori
-func clearMemoryHandler(w http.ResponseWriter, r *http.Request) {
-	mu.Lock() // Mengunci saat pembersihan
-	defer mu.Unlock()
+// Endpoint untuk memeriksa status memory yang dikonsumsi
+func statusHandler(w http.ResponseWriter, r *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
 
-	// Kosongkan memori
-	memoryHog = [][]byte{}
-
-	fmt.Fprintln(w, "Memory cleared")
+	memoryUsed := len(memoryHog) * 10 // Total memory yang dikonsumsi dalam MB
+	fmt.Fprintf(w, "Current memory consumption: %d MB\n", memoryUsed)
 }
 
 func main() {
-	http.HandleFunc("/stress-memory", stressMemoryHandler)
-	http.HandleFunc("/clear-memory", clearMemoryHandler)
+	http.HandleFunc("/start", memoryHandler) // Mulai konsumsi memory
+	http.HandleFunc("/status", statusHandler) // Cek status penggunaan memory
 
-	fmt.Println("Memory stress service running on port 8080")
+	fmt.Println("Server is running on port 8080")
 	http.ListenAndServe(":8080", nil)
 }

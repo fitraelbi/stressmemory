@@ -1,26 +1,30 @@
-# Gunakan base image yang ringan seperti Alpine dengan Golang
-FROM golang:alpine AS builder
+# Stage 1: Build the Go binary
+FROM golang:1.20-alpine AS builder
 
-# Buat direktori kerja untuk aplikasi
+# Set the Current Working Directory inside the container
 WORKDIR /app
 
-# Salin semua file ke container
+# Copy go.mod and go.sum to download dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the source code into the container
 COPY . .
 
-# Unduh dependency dan build aplikasi
-RUN go mod download
-RUN go build -o memory-stress-service
+# Build the Go application
+RUN go build -o /memory-consumer
 
-# Buat image yang lebih ringan hanya dengan binary aplikasi
+# Stage 2: Run the Go binary
 FROM alpine:latest
 
-WORKDIR /root/
+# Set timezone (optional)
+RUN apk add --no-cache tzdata
 
-# Salin binary dari stage builder
-COPY --from=builder /app/memory-stress-service .
+# Copy the built binary from the builder
+COPY --from=builder /memory-consumer /memory-consumer
 
-# Set port untuk aplikasi
+# Expose port 8080 for the web server
 EXPOSE 8080
 
-# Jalankan aplikasi
-CMD ["./memory-stress-service"]
+# Command to run the binary
+CMD ["/memory-consumer"]
