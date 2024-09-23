@@ -5,11 +5,10 @@ FROM golang:1.20-alpine AS builder
 WORKDIR /app
 
 # Copy go.mod and go.sum to download dependencies
-COPY go.mod go.sum ./
+COPY . .
 RUN go mod download
 
 # Copy the source code into the container
-COPY . .
 
 # Build the Go application
 RUN go build -o /memory-consumer
