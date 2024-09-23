@@ -4,11 +4,11 @@ FROM golang:alpine as builder
 WORKDIR /app
 
 # Copy go.mod and go.sum, then download dependencies
-COPY go.mod go.sum ./
+COPY . .
 RUN go mod download
 
 # Copy the source code
-COPY . .
+
 
 # Build the Go binary
 RUN GOOS=linux GOARCH=amd64 go build -o /go-mem-app main.go
