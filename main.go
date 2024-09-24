@@ -24,7 +24,7 @@ func main() {
 	// Allocate 10 million random strings
 	for i := 0; i < 6500000; i++ {
 		data = append(data, generateRandomString(100))
-		if i%1000000 == 0 {
+		if i%500000 == 0 {
 			fmt.Printf("Allocated %d strings\n", i)
 		}
 	}
